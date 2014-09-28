@@ -98,6 +98,7 @@ class ConvolutionLayer : public Layer<Dtype> {
   int height_out_, width_out_;
   bool bias_term_;
   bool is_1x1_;
+  bool accum_grad_;
 
   /// M_ is the channel dimension of the output for a single group, which is the
   /// leading dimension of the filter matrix.

@@ -97,14 +97,124 @@ TYPED_TEST(InnerProductLayerTest, TestGradient) {
     InnerProductParameter* inner_product_param =
         layer_param.mutable_inner_product_param();
     inner_product_param->set_num_output(10);
+    inner_product_param->set_accum_grad(false);
     inner_product_param->mutable_weight_filler()->set_type("gaussian");
-    inner_product_param->mutable_bias_filler()->set_type("gaussian");
+    inner_product_param->mutable_bias_filler()->set_type("uniform");
     inner_product_param->mutable_bias_filler()->set_min(1);
     inner_product_param->mutable_bias_filler()->set_max(2);
     InnerProductLayer<Dtype> layer(layer_param);
     GradientChecker<Dtype> checker(1e-2, 1e-3);
     checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
         this->blob_top_vec_);
+  } else {
+    LOG(ERROR) << "Skipping test due to old architecture.";
+  }
+}
+
+TYPED_TEST(InnerProductLayerTest, TestNotAccumGrad) {
+  typedef typename TypeParam::Dtype Dtype;
+  bool IS_VALID_CUDA = false;
+#ifndef CPU_ONLY
+  IS_VALID_CUDA = CAFFE_TEST_CUDA_PROP.major >= 2;
+#endif
+  if (Caffe::mode() == Caffe::CPU ||
+      sizeof(Dtype) == 4 || IS_VALID_CUDA) {
+    LayerParameter layer_param;
+    InnerProductParameter* inner_product_param =
+        layer_param.mutable_inner_product_param();
+    inner_product_param->set_num_output(10);
+    inner_product_param->set_accum_grad(false);
+    inner_product_param->mutable_weight_filler()->set_type("gaussian");
+    inner_product_param->mutable_bias_filler()->set_type("uniform");
+    inner_product_param->mutable_bias_filler()->set_min(1);
+    inner_product_param->mutable_bias_filler()->set_max(2);
+    shared_ptr<InnerProductLayer<Dtype> > layer(
+        new InnerProductLayer<Dtype>(layer_param));
+    layer->SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
+    layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+    vector<bool> propagate_down(this->blob_bottom_vec_.size(), true);
+    // Copy data to diff
+    const Dtype* data = this->blob_top_->cpu_data();
+    Dtype* diff = this->blob_top_->mutable_cpu_diff();
+    caffe_copy(this->blob_top_->count(), data, diff);
+    layer->Backward(this->blob_top_vec_, propagate_down,
+                 this->blob_bottom_vec_);
+    const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
+    const Dtype asum_weights_diff =
+          caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff);
+    const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
+    const Dtype asum_bias_diff =
+          caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff);
+
+    for (int i = 0; i < 5; ++i) {
+      layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+      const Dtype* data = this->blob_top_->cpu_data();
+      Dtype* diff = this->blob_top_->mutable_cpu_diff();
+      caffe_copy(this->blob_top_->count(), data, diff);
+      layer->Backward(this->blob_top_vec_, propagate_down,
+                 this->blob_bottom_vec_);
+      const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
+      EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff),
+        asum_weights_diff, 1e-4);
+      const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
+      EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff),
+        asum_bias_diff, 1e-4);
+    }
+
+  } else {
+    LOG(ERROR) << "Skipping test due to old architecture.";
+  }
+}
+
+TYPED_TEST(InnerProductLayerTest, TestAccumGrad) {
+  typedef typename TypeParam::Dtype Dtype;
+  bool IS_VALID_CUDA = false;
+#ifndef CPU_ONLY
+  IS_VALID_CUDA = CAFFE_TEST_CUDA_PROP.major >= 2;
+#endif
+  if (Caffe::mode() == Caffe::CPU ||
+      sizeof(Dtype) == 4 || IS_VALID_CUDA) {
+    LayerParameter layer_param;
+    InnerProductParameter* inner_product_param =
+        layer_param.mutable_inner_product_param();
+    inner_product_param->set_num_output(10);
+    inner_product_param->mutable_weight_filler()->set_type("gaussian");
+    inner_product_param->mutable_bias_filler()->set_type("uniform");
+    inner_product_param->mutable_bias_filler()->set_min(1);
+    inner_product_param->mutable_bias_filler()->set_max(2);
+    shared_ptr<InnerProductLayer<Dtype> > layer(
+        new InnerProductLayer<Dtype>(layer_param));
+    layer->SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
+    layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+    vector<bool> propagate_down(this->blob_bottom_vec_.size(), true);
+    // Copy data to diff
+    const Dtype* data = this->blob_top_->cpu_data();
+    Dtype* diff = this->blob_top_->mutable_cpu_diff();
+    caffe_copy(this->blob_top_->count(), data, diff);
+    layer->Backward(this->blob_top_vec_, propagate_down,
+                 this->blob_bottom_vec_);
+    const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
+    const Dtype asum_weights_diff =
+          caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff);
+    const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
+    const Dtype asum_bias_diff =
+          caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff);
+
+    for (int i = 0; i < 5; ++i) {
+      layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+      const Dtype* data = this->blob_top_->cpu_data();
+      Dtype* diff = this->blob_top_->mutable_cpu_diff();
+      caffe_copy(this->blob_top_->count(), data, diff);
+      layer->Backward(this->blob_top_vec_, propagate_down,
+                 this->blob_bottom_vec_);
+      const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
+      EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff),
+        asum_weights_diff * (i + 2), 1e-4);
+      const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
+      EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff),
+        asum_bias_diff * (i + 2), 1e-4);
+    }
+
   } else {
     LOG(ERROR) << "Skipping test due to old architecture.";
   }

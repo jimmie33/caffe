@@ -409,6 +409,8 @@ message ConvolutionParameter {
     CUDNN = 2;
   }
   optional Engine engine = 15 [default = DEFAULT];
+  // By default it will accumulate gradients at each backward pass  // otherwise it will zero them each time usefull to testing
+  optional bool accum_grad = 16 [default = true];
 }
 
 // Message that stores parameters used by DataLayer
@@ -553,6 +555,9 @@ message InnerProductParameter {
   optional bool bias_term = 2 [default = true]; // whether to have bias terms
   optional FillerParameter weight_filler = 3; // The filler for the weight
   optional FillerParameter bias_filler = 4; // The filler for the bias
+  // By default it will accumulate gradients at each backward pass
+  // otherwise it will zero them each time usefull to testing
+  optional bool accum_grad = 5 [default = true];
 }
 
 // Message that stores parameters used by LRNLayer

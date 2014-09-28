@@ -189,7 +189,8 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     // zero-init the params
     for (int i = 0; i < net_->params().size(); ++i) {
       shared_ptr<Blob<Dtype> > blob = net_->params()[i];
-      caffe_gpu_set(blob->count(), static_cast<Dtype>(0), blob->mutable_gpu_diff());
+      caffe_gpu_set(blob->count(), static_cast<Dtype>(0),
+          blob->mutable_gpu_diff());
     }
 
     if (param_.test_interval() && iter_ % param_.test_interval() == 0
@@ -437,7 +438,8 @@ void SGDSolver<Dtype>::ComputeUpdateValue() {
   case Caffe::CPU:
     for (int param_id = 0; param_id < net_params.size(); ++param_id) {
       // Compute the value to history, and then copy them to the blob's diff.
-      Dtype local_rate = rate * net_params_lr[param_id] / this->param_.iter_size();
+      Dtype local_rate = rate * net_params_lr[param_id] /
+                        this->param_.iter_size();
       Dtype local_decay = weight_decay * net_params_weight_decay[param_id];
 
       if (local_decay) {
@@ -473,7 +475,8 @@ void SGDSolver<Dtype>::ComputeUpdateValue() {
 #ifndef CPU_ONLY
     for (int param_id = 0; param_id < net_params.size(); ++param_id) {
       // Compute the value to history, and then copy them to the blob's diff.
-      Dtype local_rate = rate * net_params_lr[param_id] / this->param_.iter_size();
+      Dtype local_rate = rate * net_params_lr[param_id] /
+                      this->param_.iter_size();
       Dtype local_decay = weight_decay * net_params_weight_decay[param_id];
 
       if (local_decay) {

@@ -244,6 +244,33 @@ TYPED_TEST(ConvolutionLayerTest, Test1x1Convolution) {
   }
 }
 
+TYPED_TEST(ConvolutionLayerTest, TestSingleConvolution) {
+  typedef typename TypeParam::Dtype Dtype;
+  LayerParameter layer_param;
+  ConvolutionParameter* convolution_param =
+      layer_param.mutable_convolution_param();
+  convolution_param->set_kernel_h(6);
+  convolution_param->set_kernel_w(4);
+  convolution_param->set_num_output(4);
+  convolution_param->mutable_weight_filler()->set_type("gaussian");
+  convolution_param->mutable_bias_filler()->set_type("constant");
+  convolution_param->mutable_bias_filler()->set_value(0.1);
+  shared_ptr<Layer<Dtype> > layer(
+      new ConvolutionLayer<Dtype>(layer_param));
+  layer->SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
+  layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+  // Check against reference convolution.
+  const Dtype* top_data;
+  const Dtype* ref_top_data;
+  caffe_conv(this->blob_bottom_, convolution_param, layer->blobs(),
+      this->MakeReferenceTop(this->blob_top_));
+  top_data = this->blob_top_->cpu_data();
+  ref_top_data = this->ref_blob_top_->cpu_data();
+  for (int i = 0; i < this->blob_top_->count(); ++i) {
+    EXPECT_NEAR(top_data[i], ref_top_data[i], 1e-4);
+  }
+}
+
 TYPED_TEST(ConvolutionLayerTest, TestSimpleConvolutionGroup) {
   typedef typename TypeParam::Dtype Dtype;
   LayerParameter layer_param;
@@ -378,6 +405,7 @@ TYPED_TEST(ConvolutionLayerTest, TestGradient) {
   convolution_param->set_kernel_size(3);
   convolution_param->set_stride(2);
   convolution_param->set_num_output(2);
+  convolution_param->set_accum_grad(false);
   convolution_param->mutable_weight_filler()->set_type("gaussian");
   convolution_param->mutable_bias_filler()->set_type("gaussian");
   ConvolutionLayer<Dtype> layer(layer_param);
@@ -396,6 +424,26 @@ TYPED_TEST(ConvolutionLayerTest, Test1x1Gradient) {
   convolution_param->set_kernel_size(1);
   convolution_param->set_stride(1);
   convolution_param->set_num_output(2);
+  convolution_param->set_accum_grad(false);
+  convolution_param->mutable_weight_filler()->set_type("gaussian");
+  convolution_param->mutable_bias_filler()->set_type("gaussian");
+  ConvolutionLayer<Dtype> layer(layer_param);
+  GradientChecker<Dtype> checker(1e-2, 1e-3);
+  checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
+      this->blob_top_vec_);
+}
+
+TYPED_TEST(ConvolutionLayerTest, TestSingleGradient) {
+  typedef typename TypeParam::Dtype Dtype;
+  LayerParameter layer_param;
+  ConvolutionParameter* convolution_param =
+      layer_param.mutable_convolution_param();
+  this->blob_bottom_vec_.push_back(this->blob_bottom_2_);
+  this->blob_top_vec_.push_back(this->blob_top_2_);
+  convolution_param->set_kernel_h(6);
+  convolution_param->set_kernel_w(4);
+  convolution_param->set_num_output(2);
+  convolution_param->set_accum_grad(false);
   convolution_param->mutable_weight_filler()->set_type("gaussian");
   convolution_param->mutable_bias_filler()->set_type("gaussian");
   ConvolutionLayer<Dtype> layer(layer_param);
@@ -413,12 +461,107 @@ TYPED_TEST(ConvolutionLayerTest, TestGradientGroup) {
   convolution_param->set_stride(2);
   convolution_param->set_num_output(3);
   convolution_param->set_group(3);
+  convolution_param->set_accum_grad(false);
   convolution_param->mutable_weight_filler()->set_type("gaussian");
   convolution_param->mutable_bias_filler()->set_type("gaussian");
   ConvolutionLayer<Dtype> layer(layer_param);
   GradientChecker<Dtype> checker(1e-2, 1e-3);
   checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
       this->blob_top_vec_);
+}
+
+
+TYPED_TEST(ConvolutionLayerTest, TestNotAccumGrad) {
+  typedef typename TypeParam::Dtype Dtype;
+  LayerParameter layer_param;
+  ConvolutionParameter* convolution_param =
+      layer_param.mutable_convolution_param();
+  convolution_param->set_kernel_size(3);
+  convolution_param->set_stride(2);
+  convolution_param->set_num_output(3);
+  convolution_param->set_group(3);
+  convolution_param->set_accum_grad(false);
+  convolution_param->mutable_weight_filler()->set_type("gaussian");
+  convolution_param->mutable_bias_filler()->set_type("constant");
+  convolution_param->mutable_bias_filler()->set_value(0.1);
+  shared_ptr<Layer<Dtype> > layer(
+      new ConvolutionLayer<Dtype>(layer_param));
+  layer->SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
+  layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+  vector<bool> propagate_down(this->blob_bottom_vec_.size(), true);
+  // Copy data to diff and do backward
+  const Dtype* data = this->blob_top_->cpu_data();
+  Dtype* diff = this->blob_top_->mutable_cpu_diff();
+  caffe_copy(this->blob_top_->count(), data, diff);
+  layer->Backward(this->blob_top_vec_, propagate_down,
+               this->blob_bottom_vec_);
+  const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
+  const Dtype asum_weights_diff =
+        caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff);
+  const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
+  const Dtype asum_bias_diff =
+        caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff);
+  // Check that the gradients don't change
+  for (int i = 0; i < 5; ++i) {
+    layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+    const Dtype* data = this->blob_top_->cpu_data();
+    Dtype* diff = this->blob_top_->mutable_cpu_diff();
+    caffe_copy(this->blob_top_->count(), data, diff);
+    layer->Backward(this->blob_top_vec_, propagate_down,
+               this->blob_bottom_vec_);
+    const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
+    EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff),
+      asum_weights_diff, 1e-4);
+    const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
+    EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff),
+      asum_bias_diff, 1e-4);
+  }
+}
+
+TYPED_TEST(ConvolutionLayerTest, TestAccumGrad) {
+  typedef typename TypeParam::Dtype Dtype;
+  LayerParameter layer_param;
+  ConvolutionParameter* convolution_param =
+      layer_param.mutable_convolution_param();
+  convolution_param->set_kernel_size(3);
+  convolution_param->set_stride(2);
+  convolution_param->set_num_output(3);
+  convolution_param->set_group(3);
+  convolution_param->mutable_weight_filler()->set_type("gaussian");
+  convolution_param->mutable_bias_filler()->set_type("constant");
+  convolution_param->mutable_bias_filler()->set_value(0.1);
+  shared_ptr<Layer<Dtype> > layer(
+      new ConvolutionLayer<Dtype>(layer_param));
+  layer->SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
+  layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+  vector<bool> propagate_down(this->blob_bottom_vec_.size(), true);
+  // Copy data to diff and do backward
+  const Dtype* data = this->blob_top_->cpu_data();
+  Dtype* diff = this->blob_top_->mutable_cpu_diff();
+  caffe_copy(this->blob_top_->count(), data, diff);
+  layer->Backward(this->blob_top_vec_, propagate_down,
+               this->blob_bottom_vec_);
+  const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
+  const Dtype asum_weights_diff =
+        caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff);
+  const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
+  const Dtype asum_bias_diff =
+        caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff);
+  // Check that the gradients accumulate
+  for (int i = 0; i < 5; ++i) {
+    layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+    const Dtype* data = this->blob_top_->cpu_data();
+    Dtype* diff = this->blob_top_->mutable_cpu_diff();
+    caffe_copy(this->blob_top_->count(), data, diff);
+    layer->Backward(this->blob_top_vec_, propagate_down,
+               this->blob_bottom_vec_);
+    const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
+    EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff),
+      asum_weights_diff * (i + 2), 1e-4);
+    const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
+    EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff),
+      asum_bias_diff * (i + 2), 1e-4);
+  }
 }
 
 #ifdef USE_CUDNN
@@ -674,6 +817,7 @@ TYPED_TEST(CuDNNConvolutionLayerTest, TestGradientCuDNN) {
   convolution_param->set_kernel_size(3);
   convolution_param->set_stride(2);
   convolution_param->set_num_output(2);
+  convolution_param->set_accum_grad(false);
   convolution_param->mutable_weight_filler()->set_type("gaussian");
   convolution_param->mutable_bias_filler()->set_type("gaussian");
   CuDNNConvolutionLayer<TypeParam> layer(layer_param);
@@ -691,12 +835,144 @@ TYPED_TEST(CuDNNConvolutionLayerTest, TestGradientGroupCuDNN) {
   convolution_param->set_stride(2);
   convolution_param->set_num_output(3);
   convolution_param->set_group(3);
+  convolution_param->set_accum_grad(false);
   convolution_param->mutable_weight_filler()->set_type("gaussian");
   convolution_param->mutable_bias_filler()->set_type("gaussian");
   CuDNNConvolutionLayer<TypeParam> layer(layer_param);
   GradientChecker<TypeParam> checker(1e-2, 1e-3);
   checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
       this->blob_top_vec_);
+}
+
+TYPED_TEST(CuDNNConvolutionLayerTest, Test1x1GradientCuDNN) {
+  Caffe::set_mode(Caffe::GPU);
+  LayerParameter layer_param;
+  ConvolutionParameter* convolution_param =
+      layer_param.mutable_convolution_param();
+  this->blob_bottom_vec_.push_back(this->blob_bottom_2_);
+  this->blob_top_vec_.push_back(this->blob_top_2_);
+  convolution_param->set_kernel_size(1);
+  convolution_param->set_stride(1);
+  convolution_param->set_num_output(2);
+  convolution_param->set_accum_grad(false);
+  convolution_param->mutable_weight_filler()->set_type("gaussian");
+  convolution_param->mutable_bias_filler()->set_type("gaussian");
+  ConvolutionLayer<TypeParam> layer(layer_param);
+  GradientChecker<TypeParam> checker(1e-2, 1e-3);
+  checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
+      this->blob_top_vec_);
+}
+
+TYPED_TEST(CuDNNConvolutionLayerTest, TestSingleGradientCuDNN) {
+  Caffe::set_mode(Caffe::GPU);
+  LayerParameter layer_param;
+  ConvolutionParameter* convolution_param =
+      layer_param.mutable_convolution_param();
+  this->blob_bottom_vec_.push_back(this->blob_bottom_2_);
+  this->blob_top_vec_.push_back(this->blob_top_2_);
+  convolution_param->set_kernel_h(6);
+  convolution_param->set_kernel_w(4);
+  convolution_param->set_num_output(2);
+  convolution_param->set_accum_grad(false);
+  convolution_param->mutable_weight_filler()->set_type("gaussian");
+  convolution_param->mutable_bias_filler()->set_type("gaussian");
+  ConvolutionLayer<TypeParam> layer(layer_param);
+  GradientChecker<TypeParam> checker(1e-2, 1e-3);
+  checker.CheckGradientExhaustive(&layer, this->blob_bottom_vec_,
+      this->blob_top_vec_);
+}
+
+TYPED_TEST(CuDNNConvolutionLayerTest, TestNotAccumGradCuDNN) {
+  Caffe::set_mode(Caffe::GPU);
+  LayerParameter layer_param;
+  ConvolutionParameter* convolution_param =
+      layer_param.mutable_convolution_param();
+  convolution_param->set_kernel_size(3);
+  convolution_param->set_stride(2);
+  convolution_param->set_num_output(3);
+  convolution_param->set_group(3);
+  convolution_param->set_accum_grad(false);
+  convolution_param->mutable_weight_filler()->set_type("gaussian");
+  convolution_param->mutable_bias_filler()->set_type("constant");
+  convolution_param->mutable_bias_filler()->set_value(0.1);
+  shared_ptr<Layer<TypeParam> > layer(
+      new ConvolutionLayer<TypeParam>(layer_param));
+  layer->SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
+  layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+  vector<bool> propagate_down(this->blob_bottom_vec_.size(), true);
+  // Copy data to diff and do backward
+  const TypeParam* data = this->blob_top_->cpu_data();
+  TypeParam* diff = this->blob_top_->mutable_cpu_diff();
+  caffe_copy(this->blob_top_->count(), data, diff);
+  layer->Backward(this->blob_top_vec_, propagate_down,
+               this->blob_bottom_vec_);
+  const TypeParam* weights_diff = layer->blobs()[0]->cpu_diff();
+  const TypeParam asum_weights_diff =
+        caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff);
+  const TypeParam* bias_diff = layer->blobs()[1]->cpu_diff();
+  const TypeParam asum_bias_diff =
+        caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff);
+  // Check that the gradients don't change
+  for (int i = 0; i < 5; ++i) {
+    layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+    const TypeParam* data = this->blob_top_->cpu_data();
+    TypeParam* diff = this->blob_top_->mutable_cpu_diff();
+    caffe_copy(this->blob_top_->count(), data, diff);
+    layer->Backward(this->blob_top_vec_, propagate_down,
+               this->blob_bottom_vec_);
+    const TypeParam* weights_diff = layer->blobs()[0]->cpu_diff();
+    EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff),
+      asum_weights_diff, 1e-4);
+    const TypeParam* bias_diff = layer->blobs()[1]->cpu_diff();
+    EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff),
+      asum_bias_diff, 1e-4);
+  }
+}
+
+TYPED_TEST(CuDNNConvolutionLayerTest, TestAccumGradCuDNN) {
+  Caffe::set_mode(Caffe::GPU);
+  LayerParameter layer_param;
+  ConvolutionParameter* convolution_param =
+      layer_param.mutable_convolution_param();
+  convolution_param->set_kernel_size(3);
+  convolution_param->set_stride(2);
+  convolution_param->set_num_output(3);
+  convolution_param->set_group(3);
+  convolution_param->mutable_weight_filler()->set_type("gaussian");
+  convolution_param->mutable_bias_filler()->set_type("constant");
+  convolution_param->mutable_bias_filler()->set_value(0.1);
+  shared_ptr<Layer<TypeParam> > layer(
+      new ConvolutionLayer<TypeParam>(layer_param));
+  layer->SetUp(this->blob_bottom_vec_, this->blob_top_vec_);
+  layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+  vector<bool> propagate_down(this->blob_bottom_vec_.size(), true);
+  // Copy data to diff and do backward
+  const TypeParam* data = this->blob_top_->cpu_data();
+  TypeParam* diff = this->blob_top_->mutable_cpu_diff();
+  caffe_copy(this->blob_top_->count(), data, diff);
+  layer->Backward(this->blob_top_vec_, propagate_down,
+               this->blob_bottom_vec_);
+  const TypeParam* weights_diff = layer->blobs()[0]->cpu_diff();
+  const TypeParam asum_weights_diff =
+        caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff);
+  const TypeParam* bias_diff = layer->blobs()[1]->cpu_diff();
+  const TypeParam asum_bias_diff =
+        caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff);
+  // Check that the gradients accumulate
+  for (int i = 0; i < 5; ++i) {
+    layer->Forward(this->blob_bottom_vec_, this->blob_top_vec_);
+    const TypeParam* data = this->blob_top_->cpu_data();
+    TypeParam* diff = this->blob_top_->mutable_cpu_diff();
+    caffe_copy(this->blob_top_->count(), data, diff);
+    layer->Backward(this->blob_top_vec_, propagate_down,
+               this->blob_bottom_vec_);
+    const TypeParam* weights_diff = layer->blobs()[0]->cpu_diff();
+    EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff),
+      asum_weights_diff * (i + 2), 1e-4);
+    const TypeParam* bias_diff = layer->blobs()[1]->cpu_diff();
+    EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff),
+      asum_bias_diff * (i + 2), 1e-4);
+  }
 }
 
 #endif
