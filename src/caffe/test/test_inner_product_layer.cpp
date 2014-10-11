@@ -209,10 +209,10 @@ TYPED_TEST(InnerProductLayerTest, TestAccumGrad) {
                  this->blob_bottom_vec_);
       const Dtype* weights_diff = layer->blobs()[0]->cpu_diff();
       EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[0]->count(), weights_diff),
-        asum_weights_diff * (i + 2), 1e-4);
+        asum_weights_diff * (i + 2), 1e-3);
       const Dtype* bias_diff = layer->blobs()[1]->cpu_diff();
       EXPECT_NEAR(caffe_cpu_asum(layer->blobs()[1]->count(), bias_diff),
-        asum_bias_diff * (i + 2), 1e-4);
+        asum_bias_diff * (i + 2), 1e-3);
     }
 
   } else {
