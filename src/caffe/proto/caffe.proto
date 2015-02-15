@@ -241,7 +241,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 129 (last added: window_data_param)
+// LayerParameter next available layer-specific ID: 131 (last added: reshape_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -309,6 +309,7 @@ message LayerParameter {
   optional TanHParameter tanh_param = 127;
   optional ThresholdParameter threshold_param = 128;
   optional WindowDataParameter window_data_param = 129;
+  optional ReshapeParameter reshape_param = 130;
 }
 
 // Message that stores parameters used to apply transformation
@@ -700,6 +701,16 @@ message WindowDataParameter {
   optional bool cache_images = 12 [default = false];
   // append root_folder to locate images
   optional string root_folder = 13 [default = ""];
+}
+
+// Message that stores paramters used by ReshapeLayer
+message ReshapeParameter {
+  // Speicfy the channel number
+  optional uint32 channel = 1 [default = 0];
+  // Specify the height
+  optional uint32 height = 2 [default = 0];
+  // Specify the width
+  optional uint32 width = 3 [default = 0];
 }
 
 // DEPRECATED: use LayerParameter.
