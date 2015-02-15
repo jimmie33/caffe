@@ -516,6 +516,8 @@ V1LayerParameter_LayerType UpgradeV0LayerType(const string& type) {
     return V1LayerParameter_LayerType_TANH;
   } else if (type == "window_data") {
     return V1LayerParameter_LayerType_WINDOW_DATA;
+  } else if (type == "reshape") {
+    return V1LayerParameter_LayerType_RESHAPE;
   } else {
     LOG(FATAL) << "Unknown layer name: " << type;
     return V1LayerParameter_LayerType_NONE;
@@ -820,6 +822,10 @@ bool UpgradeV1LayerParameter(const V1LayerParameter& v1_layer_param,
     layer_param->mutable_window_data_param()->CopyFrom(
         v1_layer_param.window_data_param());
   }
+  if (v1_layer_param.has_reshape_param()) {
+    layer_param->mutable_reshape_param()->CopyFrom(
+        v1_layer_param.reshape_param());
+  }
   if (v1_layer_param.has_transform_param()) {
     layer_param->mutable_transform_param()->CopyFrom(
         v1_layer_param.transform_param());
@@ -917,6 +923,8 @@ const char* UpgradeV1LayerType(const V1LayerParameter_LayerType type) {
     return "WindowData";
   case V1LayerParameter_LayerType_THRESHOLD:
     return "Threshold";
+  case V1LayerParameter_LayerType_RESHAPE:
+    return "Reshape";
   default:
     LOG(FATAL) << "Unknown V1LayerParameter layer type: " << type;
     return "";
