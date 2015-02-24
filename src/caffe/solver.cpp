@@ -207,8 +207,10 @@ void Solver<Dtype>::Step(int iters) {
         }
       }
     }
-    ComputeUpdateValue();
-    net_->Update();
+    if ((iter_+1) % param_.update_interval() == 0) {
+        ComputeUpdateValue();
+        net_->Update();
+    }
 
     // Save a snapshot if needed.
     if (param_.snapshot() && (iter_ + 1) % param_.snapshot() == 0) {

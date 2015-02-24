@@ -3,7 +3,7 @@
 % ------------------------------------------------------------------------
 caffe_root = '../../';
 deploy_file = fullfile(caffe_root, 'models/bvlc_reference_caffenet/deploy.prototxt');
-model_file = fullfile(caffe_root, 'models/bvlc_reference_caffenet/bvlc_reference_caffenet.caffemodel');
+model_file = fullfile(caffe_root, 'models/bvlc_reference_caffenet_sbt/bvlc_reference_caffenet.caffemodel');
 deploy_conv_file = fullfile(caffe_root, 'examples/imagenet/bvlc_caffenet_full_conv.prototxt');
 
 if ~exist(model_file, 'file')

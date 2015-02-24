@@ -75,7 +75,7 @@ message NetParameter {
 // NOTE
 // Update the next available ID when you add a new SolverParameter field.
 //
-// SolverParameter next available ID: 35 (last added: stepvalue)
+// SolverParameter next available ID: 36 (last added: update_interval)
 message SolverParameter {
   //////////////////////////////////////////////////////////////////////////////
   // Specifying the train and test networks
@@ -117,6 +117,7 @@ message SolverParameter {
 
   // The number of iterations between two testing phases.
   optional int32 test_interval = 4 [default = 0];
+  optional int32 update_interval = 35 [default = 1]; // mini_batch_size = update_interval * data_batch_size
   optional bool test_compute_loss = 19 [default = false];
   // If true, run an initial test pass before the first iteration,
   // ensuring memory availability and printing the starting value of the loss.
