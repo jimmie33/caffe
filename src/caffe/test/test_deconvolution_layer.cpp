@@ -142,6 +142,7 @@ TYPED_TEST(DeconvolutionLayerTest, TestGradient) {
   LayerParameter layer_param;
   ConvolutionParameter* convolution_param =
       layer_param.mutable_convolution_param();
+  convolution_param->set_accum_grad(false);
   this->blob_bottom_vec_.push_back(this->blob_bottom_2_);
   this->blob_top_vec_.push_back(this->blob_top_2_);
   convolution_param->set_kernel_size(2);

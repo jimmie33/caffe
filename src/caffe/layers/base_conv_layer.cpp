@@ -33,6 +33,10 @@ void BaseConvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
     kernel_h_ = conv_param.kernel_h();
     kernel_w_ = conv_param.kernel_w();
   }
+  accum_grad_ = conv_param.accum_grad();
+  if (accum_grad_) {
+    LOG(INFO) << "Accumulate gradients";
+  }
   CHECK_GT(kernel_h_, 0) << "Filter dimensions cannot be zero.";
   CHECK_GT(kernel_w_, 0) << "Filter dimensions cannot be zero.";
   if (!conv_param.has_pad_h()) {
