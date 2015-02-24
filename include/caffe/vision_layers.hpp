@@ -176,6 +176,7 @@ class ConvolutionLayer : public BaseConvolutionLayer<Dtype> {
   virtual void compute_output_shape();
 };
 
+
 /**
  * @brief Convolve the input with a bank of learned filters, and (optionally)
  *        add biases, treating filters and convolution parameters in the

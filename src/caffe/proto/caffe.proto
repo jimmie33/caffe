@@ -75,7 +75,7 @@ message NetParameter {
 // NOTE
 // Update the next available ID when you add a new SolverParameter field.
 //
-// SolverParameter next available ID: 36 (last added: update_interval)
+// SolverParameter next available ID: 37 (last added: iter_size)
 message SolverParameter {
   //////////////////////////////////////////////////////////////////////////////
   // Specifying the train and test networks
@@ -129,6 +129,7 @@ message SolverParameter {
   // Display the loss averaged over the last average_loss iterations
   optional int32 average_loss = 33 [default = 1];
   optional int32 max_iter = 7; // the maximum number of iterations
+  optional int32 iter_size = 36 [default = 1];
   optional string lr_policy = 8; // The learning rate decay policy.
   optional float gamma = 9; // The parameter to compute the learning rate.
   optional float power = 10; // The parameter to compute the learning rate.
@@ -394,6 +395,8 @@ message ConvolutionParameter {
     CUDNN = 2;
   }
   optional Engine engine = 15 [default = DEFAULT];
+  // By default it will accumulate gradients at each backward pass  // otherwise it will zero them each time usefull to testing
+  optional bool accum_grad = 16 [default = true];
 }
 
 // Message that stores parameters used by DataLayer
@@ -539,6 +542,9 @@ message InnerProductParameter {
   optional bool bias_term = 2 [default = true]; // whether to have bias terms
   optional FillerParameter weight_filler = 3; // The filler for the weight
   optional FillerParameter bias_filler = 4; // The filler for the bias
+  // By default it will accumulate gradients at each backward pass
+  // otherwise it will zero them each time usefull to testing
+  optional bool accum_grad = 5 [default = true];
 }
 
 // Message that stores parameters used by LRNLayer
