@@ -173,7 +173,7 @@ void Solver<Dtype>::Step(int iters) {
       TestAll();
     }
 
-    const bool display = param_.display() && iter_ % param_.display() == 0;
+    const bool display = param_.display() && (iter_ + 1) % param_.display() == 0;
     net_->set_debug_info(display && param_.debug_info());
     // accumulate the loss and gradient
     Dtype loss = 0;
@@ -213,7 +213,7 @@ void Solver<Dtype>::Step(int iters) {
         }
       }
     }
-    if ((iter_+1) % param_.update_interval() == 0) {
+    if ((iter_ + 1) % param_.update_interval() == 0) {
         ComputeUpdateValue();
         net_->Update();
     }
@@ -454,7 +454,7 @@ void SGDSolver<Dtype>::ComputeUpdateValue() {
       this->net_->params_weight_decay();
   // get the learning rate
   Dtype rate = GetLearningRate();
-  if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
+  if (this->param_.display() && (this->iter_ + 1) % this->param_.display() == 0) {
     LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
   }
   Dtype momentum = this->param_.momentum();
@@ -570,7 +570,7 @@ void NesterovSolver<Dtype>::ComputeUpdateValue() {
       this->net_->params_weight_decay();
   // get the learning rate
   Dtype rate = this->GetLearningRate();
-  if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
+  if (this->param_.display() && ( this->iter_ + 1 ) % this->param_.display() == 0) {
     LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
   }
   Dtype momentum = this->param_.momentum();
@@ -687,7 +687,7 @@ void AdaGradSolver<Dtype>::ComputeUpdateValue() {
   // get the learning rate
   Dtype rate = this->GetLearningRate();
   Dtype delta = this->param_.delta();
-  if (this->param_.display() && this->iter_ % this->param_.display() == 0) {
+  if (this->param_.display() && (this->iter_ + 1) % this->param_.display() == 0) {
     LOG(INFO) << "Iteration " << this->iter_ << ", lr = " << rate;
   }
   Dtype weight_decay = this->param_.weight_decay();

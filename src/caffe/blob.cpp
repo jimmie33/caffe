@@ -118,6 +118,7 @@ void Blob<Dtype>::Update() {
     caffe_axpy<Dtype>(count_, Dtype(-1),
         static_cast<const Dtype*>(diff_->cpu_data()),
         static_cast<Dtype*>(data_->mutable_cpu_data()));
+    caffe_set(count_, Dtype(0), (Dtype*) diff_->mutable_cpu_data());
     break;
   case SyncedMemory::HEAD_AT_GPU:
   case SyncedMemory::SYNCED:
@@ -126,6 +127,7 @@ void Blob<Dtype>::Update() {
     caffe_gpu_axpy<Dtype>(count_, Dtype(-1),
         static_cast<const Dtype*>(diff_->gpu_data()),
         static_cast<Dtype*>(data_->mutable_gpu_data()));
+    caffe_gpu_set(count_, Dtype(0), (Dtype*) diff_->mutable_gpu_data());
 #else
     NO_GPU;
 #endif
