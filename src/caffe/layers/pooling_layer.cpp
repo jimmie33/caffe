@@ -168,6 +168,7 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                   if (use_top_mask) {
                     top_mask[pool_index] = static_cast<Dtype>(index);
                   } else {
+CHECK(c != 83 || index < 1000000) << index << "," << h << "," << h << "," << w;
                     mask[pool_index] = index;
                   }
                 }

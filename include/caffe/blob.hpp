@@ -130,6 +130,24 @@ class Blob {
    */
   void ShareDiff(const Blob& other);
 
+  /**
+  * @brief Free the shared_ptr for data.
+  */
+  void FreeData() { data_.reset(); }
+  /**
+  * @brief Free the shared_ptr for diff.
+  */
+  void FreeDiff() { diff_.reset(); }
+  /**
+  * @brief Recreat the shared_ptr for data.
+  */
+  void RecreateData();
+  /**
+  * @brief Recreat the shared_ptr for diff..
+  */
+  void RecreateDiff();
+  
+  
  protected:
   shared_ptr<SyncedMemory> data_;
   shared_ptr<SyncedMemory> diff_;

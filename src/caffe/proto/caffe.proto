@@ -243,7 +243,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 131 (last added: reshape_param)
+// LayerParameter next available layer-specific ID: 132 (last added: expand_param)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -312,6 +312,7 @@ message LayerParameter {
   optional ThresholdParameter threshold_param = 128;
   optional WindowDataParameter window_data_param = 129;
   optional ReshapeParameter reshape_param = 130;
+  optional ExpandParameter expand_param = 131;
 }
 
 // Message that stores parameters used to apply transformation
@@ -720,6 +721,15 @@ message ReshapeParameter {
   optional uint32 width = 3 [default = 0];
 }
 
+// Message that stores parameters used by ExpandLayer
+message ExpandParameter {
+  // Specify the expand size
+  optional uint32 expand_size = 1;
+  // Or you can specify width and height
+  optional uint32 expand_w = 2;
+  optional uint32 expand_h = 3;
+}
+
 // DEPRECATED: use LayerParameter.
 message V1LayerParameter {
   repeated string bottom = 2;
@@ -743,6 +753,7 @@ message V1LayerParameter {
     EUCLIDEAN_LOSS = 7;
     ELTWISE = 25;
     EXP = 38;
+    EXPAND = 41;
     FLATTEN = 8;
     HDF5_DATA = 9;
     HDF5_OUTPUT = 10;
@@ -791,6 +802,7 @@ message V1LayerParameter {
   optional DummyDataParameter dummy_data_param = 26;
   optional EltwiseParameter eltwise_param = 24;
   optional ExpParameter exp_param = 41;
+  optional ExpandParameter expand_param = 44;
   optional HDF5DataParameter hdf5_data_param = 13;
   optional HDF5OutputParameter hdf5_output_param = 14;
   optional HingeLossParameter hinge_loss_param = 29;

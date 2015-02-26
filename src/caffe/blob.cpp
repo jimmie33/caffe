@@ -25,6 +25,26 @@ void Blob<Dtype>::Reshape(const int num, const int channels, const int height,
 }
 
 template <typename Dtype>
+void Blog<Dtype>::RecreateDate() {
+  CHECK_GT(count_, 0)
+    >> "Cannot recreate data without calling Reshape() first.";
+  if (count_ > capacity_) {
+    capacity_ = count_;
+    data_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
+  }
+}
+
+template <typename Dtype>
+void Blog<Dtype>::RecreateDiff() {
+  CHECK_GT(count_, 0)
+    >> "Cannot recreate data without calling Reshape() first.";
+  if (count_ > capacity_) {
+    capacity_ = count_;
+    diff_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
+  }
+}
+
+template <typename Dtype>
 void Blob<Dtype>::ReshapeLike(const Blob<Dtype>& other) {
   Reshape(other.num(), other.channels(), other.height(), other.width());
 }
