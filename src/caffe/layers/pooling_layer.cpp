@@ -114,12 +114,18 @@ void PoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
       PoolingParameter_PoolMethod_MAX && top.size() == 1) {
     max_idx_.Reshape(bottom[0]->num(), channels_, pooled_height_,
         pooled_width_);
+    // we will never need the diff part of max_idx_
+    max_idx_.FreeDiff();
   }
   // If stochastic pooling, we will initialize the random index part.
   if (this->layer_param_.pooling_param().pool() ==
       PoolingParameter_PoolMethod_STOCHASTIC) {
     rand_idx_.Reshape(bottom[0]->num(), channels_, pooled_height_,
       pooled_width_);
+  }
+  // Free the bottom diff pointer as it will not be used in forward pass.
+  if (this->layer_param_.memory_eco()) {
+    bottom[0]->FreeDiff();
   }
 }
 
@@ -128,6 +134,18 @@ void PoolingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
+  if (this->layer_param_.memory_eco()) {
+    // Free the bottom diff pointer as it will not be used in forward pass.
+    bottom[0]->FreeDiff();
+    // Recreate the top data pointer.
+    top[0]->RecreateData();
+    // Recreate the max_idx_
+    if (this->layer_param_.pooling_param().pool() ==
+        PoolingParameter_PoolMethod_MAX && top.size() == 1) {
+      max_idx_.RecreateData();
+    }
+  }
+
   const Dtype* bottom_data = bottom[0]->cpu_data();
   Dtype* top_data = top[0]->mutable_cpu_data();
   const int top_count = top[0]->count();
@@ -168,7 +186,6 @@ void PoolingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                   if (use_top_mask) {
                     top_mask[pool_index] = static_cast<Dtype>(index);
                   } else {
-CHECK(c != 83 || index < 1000000) << index << "," << h << "," << h << "," << w;
                     mask[pool_index] = index;
                   }
                 }
@@ -234,6 +251,14 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
   if (!propagate_down[0]) {
     return;
   }
+  if (this->layer_param_.memory_eco()) {
+    // Recreate the bottom diff
+    bottom[0]->RecreateDiff();
+    // Free top data as will not be needed in the backward pass.
+    top[0]->FreeData();
+  }
+
+
   const Dtype* top_diff = top[0]->cpu_diff();
   Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
   // Different pooling methods. We explicitly do the switch outside the for
@@ -305,6 +330,11 @@ void PoolingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
     break;
   default:
     LOG(FATAL) << "Unknown pooling method.";
+  }
+  if (this->layer_param_.memory_eco()) {
+    // Free max_idx_ data as it will not be needed in the backward pass.
+    max_idx_.FreeData();
+    // todo: handle stochastic pooling 
   }
 }
 

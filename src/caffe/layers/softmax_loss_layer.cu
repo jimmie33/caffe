@@ -32,6 +32,10 @@ __global__ void SoftmaxLossForwardGPU(const int nthreads,
 template <typename Dtype>
 void SoftmaxWithLossLayer<Dtype>::Forward_gpu(
     const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+  if (this->layer_param_.use_cpu()) {
+    Forward(bottom, top);
+    return;
+  }
   softmax_layer_->Forward(softmax_bottom_vec_, softmax_top_vec_);
   const Dtype* prob_data = prob_.gpu_data();
   const Dtype* label = bottom[1]->gpu_data();
@@ -92,6 +96,10 @@ __global__ void SoftmaxLossBackwardGPU(const int nthreads, const Dtype* top,
 template <typename Dtype>
 void SoftmaxWithLossLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+  if (this->layer_param_.use_cpu()) {
+    Backward(top, propagate_down, bottom);
+    return;
+  }
   if (propagate_down[1]) {
     LOG(FATAL) << this->type()
                << " Layer cannot backpropagate to label inputs.";

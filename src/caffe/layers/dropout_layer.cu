@@ -23,6 +23,10 @@ __global__ void DropoutForward(const int n, const Dtype* in,
 template <typename Dtype>
 void DropoutLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
+  if (this->layer_param_.use_cpu()) {
+    Forward(bottom, top);
+    return;
+  }
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = top[0]->mutable_gpu_data();
   const int count = bottom[0]->count();
@@ -53,6 +57,10 @@ template <typename Dtype>
 void DropoutLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down,
     const vector<Blob<Dtype>*>& bottom) {
+  if (this->layer_param_.use_cpu()) {
+    Backward(top, propagate_down, bottom);
+    return;
+  }
   if (propagate_down[0]) {
     const Dtype* top_diff = top[0]->gpu_diff();
     Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();

@@ -153,6 +153,10 @@ __global__ void StoPoolForwardTest(const int nthreads,
 template <typename Dtype>
 void PoolingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
+  if (this->layer_param_.use_cpu()) {
+    Forward(bottom, top);
+    return;
+  }
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = top[0]->mutable_gpu_data();
   int count = top[0]->count();
@@ -326,6 +330,10 @@ __global__ void StoPoolBackward(const int nthreads,
 template <typename Dtype>
 void PoolingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+  if (this->layer_param_.use_cpu()) {
+    Backward(top, propagate_down, bottom);
+    return;
+  }
   if (!propagate_down[0]) {
     return;
   }

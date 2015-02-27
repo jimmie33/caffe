@@ -243,7 +243,7 @@ message ParamSpec {
 // NOTE
 // Update the next available ID when you add a new LayerParameter field.
 //
-// LayerParameter next available layer-specific ID: 132 (last added: expand_param)
+// LayerParameter next available layer-specific ID: 134 (last added: use_cpu)
 message LayerParameter {
   optional string name = 1; // the layer name
   optional string type = 2; // the layer type
@@ -261,6 +261,12 @@ message LayerParameter {
 
   // The blobs containing the numeric parameters of the layer.
   repeated BlobProto blobs = 7;
+
+  // The memory_eco mode will free unused Blob space (Good for small GPU memory)
+  optional bool memory_eco = 132 [default = false];
+
+  // Force to use CPU instead of GPU to save GPU memory
+  optional bool use_cpu = 133 [default = false];
 
   // Rules controlling whether and when a layer is included in the network,
   // based on the current NetState.  You may specify a non-zero number of rules

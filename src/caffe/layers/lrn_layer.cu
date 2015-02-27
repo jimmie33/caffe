@@ -56,6 +56,10 @@ __global__ void LRNFillScale(const int nthreads, const Dtype* in,
 template <typename Dtype>
 void LRNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
+  if (this->layer_param_.use_cpu()) {
+    Forward(bottom, top);
+    return;
+  }
   switch (this->layer_param_.lrn_param().norm_region()) {
   case LRNParameter_NormRegion_ACROSS_CHANNELS:
     CrossChannelForward_gpu(bottom, top);
@@ -107,6 +111,10 @@ template void LRNLayer<double>::CrossChannelForward_gpu(
 template <typename Dtype>
 void LRNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+  if (this->layer_param_.use_cpu()) {
+    Backward(top, propagate_down, bottom);
+    return;
+  }
   switch (this->layer_param_.lrn_param().norm_region()) {
   case LRNParameter_NormRegion_ACROSS_CHANNELS:
     CrossChannelBackward_gpu(top, propagate_down, bottom);
