@@ -30,8 +30,8 @@ void Blob<Dtype>::RecreateData() {
     << "Cannot recreate data without calling Reshape() first.";
   if (count_ > capacity_) {
     capacity_ = count_;
-    data_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
   }
+  data_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
 }
 
 template <typename Dtype>
@@ -40,8 +40,9 @@ void Blob<Dtype>::RecreateDiff() {
     << "Cannot recreate data without calling Reshape() first.";
   if (count_ > capacity_) {
     capacity_ = count_;
-    diff_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
   }
+  diff_.reset(new SyncedMemory(capacity_ * sizeof(Dtype)));
+  CHECK(diff_);
 }
 
 template <typename Dtype>

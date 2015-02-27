@@ -12,7 +12,7 @@ template <typename Dtype>
 void ConvolutionLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   if (this->layer_param_.use_cpu()) {
-    Forward(bottom, top);
+    Forward_cpu(bottom, top);
     return;
   }
   const Dtype* weight = this->blobs_[0]->gpu_data();
@@ -34,7 +34,7 @@ template <typename Dtype>
 void ConvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   if (this->layer_param_.use_cpu()) {
-    Backward(top, propagate_down, bottom);
+    Backward_cpu(top, propagate_down, bottom);
     return;
   }
   const Dtype* weight = this->blobs_[0]->gpu_data();

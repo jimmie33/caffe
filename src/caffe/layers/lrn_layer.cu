@@ -57,7 +57,7 @@ template <typename Dtype>
 void LRNLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
   if (this->layer_param_.use_cpu()) {
-    Forward(bottom, top);
+    Forward_cpu(bottom, top);
     return;
   }
   switch (this->layer_param_.lrn_param().norm_region()) {
@@ -112,7 +112,7 @@ template <typename Dtype>
 void LRNLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   if (this->layer_param_.use_cpu()) {
-    Backward(top, propagate_down, bottom);
+    Backward_cpu(top, propagate_down, bottom);
     return;
   }
   switch (this->layer_param_.lrn_param().norm_region()) {

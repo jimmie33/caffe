@@ -9,6 +9,10 @@ namespace caffe {
 template <typename Dtype>
 void ConcatLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
+  if (this->layer_param_.use_cpu()) {
+    Forward_cpu(bottom, top);
+    return;
+  }
   Dtype* top_data = top[0]->mutable_gpu_data();
   if (concat_dim_ == 0) {
     int offset_num = 0;
@@ -39,6 +43,10 @@ void ConcatLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void ConcatLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+  if (this->layer_param_.use_cpu()) {
+    Backward_cpu(top, propagate_down, bottom);
+    return;
+  }
   const Dtype* top_diff = top[0]->gpu_diff();
   if (concat_dim_ == 0) {
     int offset_num = 0;

@@ -154,8 +154,19 @@ template <typename Dtype>
 void PoolingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top) {
   if (this->layer_param_.use_cpu()) {
-    Forward(bottom, top);
+    Forward_cpu(bottom, top);
     return;
+  }
+  if (this->layer_param_.memory_eco()) {
+    // Free the bottom diff pointer as it will not be used in forward pass.
+    bottom[0]->FreeDiff();
+    // Recreate the top data pointer.
+    top[0]->RecreateData();
+    // Recreate the max_idx_
+    if (this->layer_param_.pooling_param().pool() ==
+        PoolingParameter_PoolMethod_MAX && top.size() == 1) {
+      max_idx_.RecreateData();
+    }
   }
   const Dtype* bottom_data = bottom[0]->gpu_data();
   Dtype* top_data = top[0]->mutable_gpu_data();
@@ -331,11 +342,17 @@ template <typename Dtype>
 void PoolingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   if (this->layer_param_.use_cpu()) {
-    Backward(top, propagate_down, bottom);
+    Backward_cpu(top, propagate_down, bottom);
     return;
   }
   if (!propagate_down[0]) {
     return;
+  }
+  if (this->layer_param_.memory_eco()) {
+    // Recreate the bottom diff
+    bottom[0]->RecreateDiff();
+    // Free top data as will not be needed in the backward pass.
+    top[0]->FreeData();
   }
   const Dtype* top_diff = top[0]->gpu_diff();
   Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();
@@ -376,6 +393,11 @@ void PoolingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
     break;
   default:
     LOG(FATAL) << "Unknown pooling method.";
+  }
+  if (this->layer_param_.memory_eco()) {
+    // Free max_idx_ data as it will not be needed in the backward pass.
+    max_idx_.FreeData();
+    // todo: handle stochastic pooling 
   }
   CUDA_POST_KERNEL_CHECK;
 }

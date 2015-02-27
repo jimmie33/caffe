@@ -830,6 +830,8 @@ message V1LayerParameter {
   optional WindowDataParameter window_data_param = 20;
   optional TransformationParameter transform_param = 36;
   optional LossParameter loss_param = 42;
+  optional bool use_cpu = 45 [default = false]; 
+  optional bool memory_eco = 46 [default = false];
   optional V0LayerParameter layer = 1;
 }
 

@@ -712,6 +712,12 @@ bool UpgradeV1LayerParameter(const V1LayerParameter& v1_layer_param,
   for (int i = 0; i < v1_layer_param.loss_weight_size(); ++i) {
     layer_param->add_loss_weight(v1_layer_param.loss_weight(i));
   }
+  if (v1_layer_param.has_use_cpu()) {
+    layer_param->set_use_cpu(v1_layer_param.use_cpu());
+  }
+  if (v1_layer_param.has_memory_eco()) {
+    layer_param->set_memory_eco(v1_layer_param.memory_eco());
+  }
   if (v1_layer_param.has_accuracy_param()) {
     layer_param->mutable_accuracy_param()->CopyFrom(
         v1_layer_param.accuracy_param());
