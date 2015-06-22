@@ -21,34 +21,29 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_gpu(
   const Dtype* input_data = bottom[0]->cpu_data();
   const Dtype* target = bottom[1]->cpu_data();
   Dtype loss = 0;
+  Dtype wc = 0;
   for (int i = 0; i < count; ++i) {
-    loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) -
-        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0)));
+    if (target[i] > 0) {
+    // Update the loss only if target[i] is not 0
+      loss -= class_weight_[0] * (input_data[i] * ((target[i] > 0) - (input_data[i] >= 0)) -
+          log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))));
+      wc += class_weight_[0];
+    }
+    else if (target[i] < 0) {
+      loss -= class_weight_[1] * (input_data[i] * ((target[i] > 0) - (input_data[i] >= 0)) -
+          log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))));
+      wc += class_weight_[1];
+    }
   }
-  top[0]->mutable_cpu_data()[0] = loss / num;
+  //LOG(INFO) << ploss << std::endl;
+  top[0]->mutable_cpu_data()[0] = loss / wc;
 }
 
 template <typename Dtype>
 void SigmoidCrossEntropyLossLayer<Dtype>::Backward_gpu(
     const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down,
     const vector<Blob<Dtype>*>& bottom) {
-  if (propagate_down[1]) {
-    LOG(FATAL) << this->type()
-               << " Layer cannot backpropagate to label inputs.";
-  }
-  if (propagate_down[0]) {
-    // First, compute the diff
-    const int count = bottom[0]->count();
-    const int num = bottom[0]->num();
-    const Dtype* sigmoid_output_data = sigmoid_output_->gpu_data();
-    const Dtype* target = bottom[1]->gpu_data();
-    Dtype* bottom_diff = bottom[0]->mutable_gpu_diff();
-    caffe_copy(count, sigmoid_output_data, bottom_diff);
-    caffe_gpu_axpy(count, Dtype(-1), target, bottom_diff);
-    // Scale down gradient
-    const Dtype loss_weight = top[0]->cpu_diff()[0];
-    caffe_gpu_scal(count, loss_weight / num, bottom_diff);
-  }
+  Backward_cpu(top, propagate_down, bottom);
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(SigmoidCrossEntropyLossLayer);

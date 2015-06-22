@@ -347,6 +347,8 @@ message LossParameter {
   // If true, normalize each batch across all instances (including spatial
   // dimesions, but not ignored instances); else, divide by batch size only.
   optional bool normalize = 2 [default = true];
+  // Used by cross entropy loss layer to balance pos and neg samples
+  repeated float class_weight = 3; 
 }
 
 // Message that stores parameters used by AccuracyLayer

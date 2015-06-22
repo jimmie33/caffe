@@ -17,6 +17,20 @@ void SigmoidCrossEntropyLossLayer<Dtype>::LayerSetUp(
   sigmoid_top_vec_.clear();
   sigmoid_top_vec_.push_back(sigmoid_output_.get());
   sigmoid_layer_->SetUp(sigmoid_bottom_vec_, sigmoid_top_vec_);
+  
+  for (int i = 0; i < this->layer_param_.loss_param().class_weight_size(); i++) {
+    class_weight_.push_back(this->layer_param_.loss_param().class_weight(i));
+  }
+  if (class_weight_.size() < 2) {
+    LOG(INFO) << "No class_weight specified. Use 1 for both classes." << std::endl;
+    class_weight_.clear();
+    class_weight_.push_back((Dtype) 1.0);
+    class_weight_.push_back((Dtype) 1.0);
+  }
+  else {
+    LOG(INFO) << "positive class weight: " << class_weight_[0] << std::endl
+      << "negative class weight: " << class_weight_[1] << std::endl;
+  }
 }
 
 template <typename Dtype>
@@ -41,11 +55,21 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Forward_cpu(
   const Dtype* input_data = bottom[0]->cpu_data();
   const Dtype* target = bottom[1]->cpu_data();
   Dtype loss = 0;
+  Dtype wc = 0;
   for (int i = 0; i < count; ++i) {
-    loss -= input_data[i] * (target[i] - (input_data[i] >= 0)) -
-        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0)));
+    if (target[i] > 0) {
+    // Update the loss only if target[i] is not 0
+      loss -= class_weight_[0] * (input_data[i] * ((target[i] > 0) - (input_data[i] >= 0)) -
+        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))));
+      wc += class_weight_[0];
+    }
+    else if (target[i] < 0) {
+      loss -= class_weight_[1] * (input_data[i] * ((target[i] > 0) - (input_data[i] >= 0)) -
+        log(1 + exp(input_data[i] - 2 * input_data[i] * (input_data[i] >= 0))));
+      wc += class_weight_[1];
+    }
   }
-  top[0]->mutable_cpu_data()[0] = loss / num;
+  top[0]->mutable_cpu_data()[0] = loss / wc;
 }
 
 template <typename Dtype>
@@ -63,10 +87,23 @@ void SigmoidCrossEntropyLossLayer<Dtype>::Backward_cpu(
     const Dtype* sigmoid_output_data = sigmoid_output_->cpu_data();
     const Dtype* target = bottom[1]->cpu_data();
     Dtype* bottom_diff = bottom[0]->mutable_cpu_diff();
-    caffe_sub(count, sigmoid_output_data, target, bottom_diff);
+    Dtype wc = 0;
+    for (int i = 0; i < count; ++i) {
+      if (target[i] > 0) {
+        bottom_diff[i] = class_weight_[0] * (sigmoid_output_data[i] - (target[i] > 0));
+        wc += class_weight_[0];
+      }
+      else if (target[i] < 0) {
+        bottom_diff[i] = class_weight_[1] * (sigmoid_output_data[i] - (target[i] > 0));
+        wc += class_weight_[1];
+      }
+      else {
+        bottom_diff[i] = 0;
+      }
+    }
     // Scale down gradient
     const Dtype loss_weight = top[0]->cpu_diff()[0];
-    caffe_scal(count, loss_weight / num, bottom_diff);
+    caffe_scal(count, loss_weight / wc, bottom_diff);
   }
 }
 

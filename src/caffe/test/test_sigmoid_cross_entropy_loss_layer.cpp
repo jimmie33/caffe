@@ -32,7 +32,7 @@ class SigmoidCrossEntropyLossLayerTest : public MultiDeviceTest<TypeParam> {
     blob_bottom_vec_.push_back(blob_bottom_data_);
     // Fill the targets vector
     FillerParameter targets_filler_param;
-    targets_filler_param.set_min(0);
+    targets_filler_param.set_min(-1);
     targets_filler_param.set_max(1);
     UniformFiller<Dtype> targets_filler(targets_filler_param);
     targets_filler.Fill(blob_bottom_targets_);
@@ -54,9 +54,11 @@ class SigmoidCrossEntropyLossLayerTest : public MultiDeviceTest<TypeParam> {
       EXPECT_LE(prediction, 1);
       EXPECT_GE(prediction, 0);
       EXPECT_LE(target[i], 1);
-      EXPECT_GE(target[i], 0);
-      loss -= target[i] * log(prediction + (target[i] == Dtype(0)));
-      loss -= (1 - target[i]) * log(1 - prediction + (target[i] == Dtype(1)));
+      EXPECT_GE(target[i], -1);
+      if (target[i] != 0) {
+        loss -= (target[i] > 0) * log(prediction + (target[i] < 0));
+        loss -= (target[i] < 0) * log(1 - prediction + (target[i] > 0));
+      }
     }
     return loss / num;
   }
